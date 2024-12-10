@@ -30,7 +30,7 @@ def ExisteUmMesmoElementoNos2Conjuntos(conjunto1 : list, conjunto2 : list):
             return True
     return False
 
-# usa a biblioteca tkinter para abrir a janela paraseleção de arquivo
+# usa a biblioteca tkinter para abrir a janela para seleção de arquivo
 iniciar = input("Deseja iniciar a leitura de uma GLUD? (s para iniciar, qualquer outro input para fechar o programa)")
 if iniciar == 's':
     root = tk.Tk()
@@ -80,6 +80,11 @@ while(continuar_execucao):
 
         conjuntos_da_GLUD = conteudos_linha[1]
 
+        if len(conjuntos_da_GLUD) < 15:
+            print("Erro: tamanho dos conjuntos da GLUD é menor do que o mínimo necessário para ser um formato válido")
+            continuar_execucao = False
+            break
+
         if conjuntos_da_GLUD[0] != '(' or conjuntos_da_GLUD[-1] != ')':
             print("Erro: os conjuntos da GLUD devem estar cercados por parênteses")
             continuar_execucao = False
@@ -117,7 +122,7 @@ while(continuar_execucao):
             continuar_execucao = False
             break
 
-        if conjuntos_da_GLUD[conjuntos_da_GLUD.find("}, {")+3] != '{':
+        if conjuntos_da_GLUD[conjuntos_da_GLUD.find("}, ")+3] != '{':
             print("Erro: caractere indefinido entre o conjunto de variáveis e o conjunto de terminais")
             continuar_execucao = False
             break
@@ -150,6 +155,7 @@ while(continuar_execucao):
         simbolo_producao = conjuntos_da_GLUD[conjuntos_da_GLUD.find("}, P, ")+3]
         simbolo_inicial = conjuntos_da_GLUD[conjuntos_da_GLUD.find("}, P, ")+6]
 
+        # tratamento de errros relacionados ao símbolo de produções e ao símbolo inicial
         if simbolo_producao != 'P':
             print("Erro: símbolo de produções deve ser o caractere 'P'")
             continuar_execucao = False
@@ -175,8 +181,8 @@ while(continuar_execucao):
             continuar_execucao = False
             break
 
-        if simbolo_inicial.find(' ') != -1 or simbolo_inicial.find('  ') != -1:
-            print("Erro: não deve haver espaços em branco entre os caracteres do símbolo inicial. Certifique-se de que ele não seja vazio")
+        if simbolo_inicial == ' ' or simbolo_inicial == '  ':
+            print("Erro: símbolo inicial não pode ser um espaço. Certifique-se de que ele não seja vazio")
             continuar_execucao = False
             break   
 
@@ -188,49 +194,68 @@ while(continuar_execucao):
 
         sintaxe_de_fim_correta = False
         producoes = []
-        ultima_producao = -2
+        qtd_de_caracteres_finais_ignorados = -2
 
         #tratamento das produções
         for linhanum, linha in enumerate(arq, 1):
-            if linha.strip() == primeira_linha or linha.strip() == "P = {":
+            print(linhanum, linha, linha[:-1], len(linha))
+            # se for a primeira ou a segunda linha, pula pois não é para ser uma produção
+            if linhanum == 1 or linhanum == 2:
                 continue
-            if linha[:-1] == '}':
+            # se a linha possuir apenas o caractere '}', significa que devemos ter chegado ao fim das produções
+            if linha[0] == '}' and len(linha) == 1:
                 sintaxe_de_fim_correta = True
                 continue
+            # se o arquivo continua depois de chegarmos ao fim das produções, então o arquivo não está no formato especificado
             if sintaxe_de_fim_correta:
                 print("Erro: arquivo da GLUD possui conteúdo após caractere terminador das produções ('}')")
                 continuar_execucao = False
                 break
+            # verifica se alguma linha é vazia, e dá um erro se for
             if not linha.strip():
                 print("Erro: linha de produções vazia")
                 continuar_execucao = False
                 break
-            if len(linha[:ultima_producao]) > 7 or len(linha[:ultima_producao]) < 5:
+            # verifica se chegamos na última produção (não possui vírgula a separando de outras produções), para de ignorar os últimos 2 caracteres (,\n) e passa a igorar somente o último (\n)
+            if linha[-2] != ',':
+                qtd_de_caracteres_finais_ignorados = -1
+            # descontando o caractere \n e a vírgula, o total de caracteres em uma produção deve ser 5 (V -> ), 6 (V -> t) ou 7 (V -> tV)
+            if len(linha[:qtd_de_caracteres_finais_ignorados]) > 7 or len(linha[:qtd_de_caracteres_finais_ignorados]) < 5:
                 print("Erro: tamanho de produção incorreto")
                 continuar_execucao = False
                 break
+            # verifica se há o símbolo '->' exatamente no meio da produção
             if linha[:-1].find("->") != 2:
                 print("Erro: símbolo representador da transição na produção inexistente ou no local incorreto (deve ser do tipo \"V -> tV\", \"V -> t\" ou \"V -> \")")
                 continuar_execucao = False
                 break
-            if linha[-2] != ',':
-                ultima_producao = -1
-            if len(linha[:ultima_producao]) == 7:
-                if linha[:ultima_producao][0] not in variaveis or linha[:ultima_producao][5] not in terminais or linha[:ultima_producao][6] not in variaveis:
+            # verifica se há espaços separando 'V' '->' e o símbolo da esquerda, se existir
+            if linha[1] != " " or linha[4] != " ":
+                print("Erro: deve haver espaço separando o símbolo da direita da produção do símbolo -> e deve haver um espaço separando o símbolo -> do símbolo da esquerda da produção")
+                continuar_execucao = False
+                break
+            # verifica se os símbolos envolvidos na produção pertencem aos conjuntos definidos de variáveis e terminais
+            if len(linha[:qtd_de_caracteres_finais_ignorados]) == 7:
+                if linha[:qtd_de_caracteres_finais_ignorados][0] not in variaveis or linha[:qtd_de_caracteres_finais_ignorados][5] not in terminais or linha[:qtd_de_caracteres_finais_ignorados][6] not in variaveis:
                     print(f"Erro: algum símbolo de produção da linha {linhanum} não pertence ao conjunto de variáveis ou de terminais (deve ser do tipo \"V -> tV\")")
                     continuar_execucao = False
                     break
-            if len(linha[:ultima_producao]) == 6:
-                if linha[:ultima_producao][0] not in variaveis or linha[:ultima_producao][5] not in terminais:
+            if len(linha[:qtd_de_caracteres_finais_ignorados]) == 6:
+                if linha[:qtd_de_caracteres_finais_ignorados][0] not in variaveis or linha[:qtd_de_caracteres_finais_ignorados][5] not in terminais:
                     print(f"Erro: algum símbolo de produção da linha {linhanum} não pertence ao conjunto de variáveis ou de terminais (deve ser do tipo \"V -> t\")")
                     continuar_execucao = False
                     break
-            if len(linha[:ultima_producao]) == 5:
-                if linha[:ultima_producao][0] not in variaveis or linha[:ultima_producao][5] != " ":
+            if len(linha[:qtd_de_caracteres_finais_ignorados]) == 5:
+                if linha[:qtd_de_caracteres_finais_ignorados][0] not in variaveis or linha[:qtd_de_caracteres_finais_ignorados][4] != " ":
                     print(f"Erro: o primeiro símbolo da linha {linhanum} não pertence ao conjunto de variáveis ou o último símbolo da linha {linhanum} não é a palavra vazia (espaço) (deve ser do tipo \"V -> \")")
                     continuar_execucao = False
                     break
-            producoes.append(linha[:ultima_producao])
+            producoes.append(linha[:qtd_de_caracteres_finais_ignorados])
+
+        if not sintaxe_de_fim_correta:
+            print("Erro: conjunto de produções não tem caractere terminador '}'")
+            continuar_execucao = False
+            break
         
         if not continuar_execucao:
             break
