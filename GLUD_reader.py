@@ -198,7 +198,7 @@ while(continuar_execucao):
 
         #tratamento das produções
         for linhanum, linha in enumerate(arq, 1):
-            print(linhanum, linha, linha[:-1], len(linha))
+            print(linha, linhanum, len(linha))
             # se for a primeira ou a segunda linha, pula pois não é para ser uma produção
             if linhanum == 1 or linhanum == 2:
                 continue
