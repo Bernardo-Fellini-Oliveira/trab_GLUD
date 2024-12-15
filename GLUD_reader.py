@@ -1,28 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 
-def EncontraNesimaLinhaNaoVazia(arq : str, n : int):
-    for linha in arq:
-        if linha.strip():
-            n -= 1
-        if n == 0:
-            linha_nao_vazia = linha
-            break
-    
-    return linha_nao_vazia
-
-#def EncontraNesimaOcorrenciaDeSubstringNaString(string : str, substring : str, n : int):
- #   inicio = string.find(substring)
-  #  while inicio >=0 and n > 1:
-   #     inicio = string.find(substring, inicio+len(substring))
-    #    n -= 1
-    #return inicio
-
-def ExisteElementoComMaisDe1Caractere(conjunto : list):
-    for elemento in conjunto:
-        if len(elemento) > 1:
-            return True
-    return False
+import regex as re
 
 def ExisteUmMesmoElementoNos2Conjuntos(conjunto1 : list, conjunto2 : list):
     for elemento in conjunto2:
@@ -30,6 +9,37 @@ def ExisteUmMesmoElementoNos2Conjuntos(conjunto1 : list, conjunto2 : list):
             return True
     return False
 
+def VerificaSeLadoEsquerdoEInvalido(lado_esquerdo : str, variaveis : list):
+    if lado_esquerdo not in variaveis:
+        return True
+    else:
+        return False
+
+def VerificaSeLadoDireitoEInvalido(lado_direito : str, tamanho_maximo_de_terminal : int, tamanho_maximo_de_variavel : int, chars_ignorados : int, terminais : list, variaveis : list):
+
+    lado_direito = lado_direito[:chars_ignorados]
+
+    if len(lado_direito) > tamanho_maximo_de_terminal + tamanho_maximo_de_variavel:
+        print("Erro: lado direito da produção é maior do que o maior terminal e a maior variável concatenadas")
+        return True
+
+    lado_invalido = True
+
+    if not lado_direito.strip():
+        lado_invalido = False
+    elif lado_direito.strip() in terminais:
+        lado_invalido = False
+    else:
+        for i in range(tamanho_maximo_de_terminal, -1, -1):
+            if lado_direito[0:i] in terminais and lado_direito[i:].strip() in variaveis:
+                lado_invalido = False
+                break
+    
+    if lado_invalido:
+        print("Erro: lado direito da produção não é da forma tV, V ou vazio")
+        
+    return lado_invalido
+        
 # usa a biblioteca tkinter para abrir a janela para seleção de arquivo
 iniciar = input("Deseja iniciar a leitura de uma GLUD? (s para iniciar, qualquer outro input para fechar o programa)")
 if iniciar == 's':
@@ -111,11 +121,7 @@ while(continuar_execucao):
             break
 
         variaveis = conjuntos_da_GLUD[2 : conjuntos_da_GLUD.find("}, {")].split(',')
-
-        if ExisteElementoComMaisDe1Caractere(variaveis):
-            print("Erro: variáveis devem devem ser representadas por apenas 1 caractere")
-            continuar_execucao = False
-            break
+        variavel_max_len = max(len(variavel) for variavel in variaveis)
 
         if '' in variaveis:
             print("Erro: deve existir ao menos 1 símbolo de variável")
@@ -138,6 +144,7 @@ while(continuar_execucao):
             break
 
         terminais = conjuntos_da_GLUD[conjuntos_da_GLUD.find("}, {")+4 : conjuntos_da_GLUD.find("}, P, ")].split(',')
+        terminal_max_len = max(len(terminal) for terminal in terminais)
 
         if(ExisteUmMesmoElementoNos2Conjuntos(variaveis, terminais)):
             print("Erro: o conjunto de terminais e o connjunto de variáveis não podem compartilhar elementos")
@@ -193,6 +200,7 @@ while(continuar_execucao):
             break
 
         sintaxe_de_fim_correta = False
+        ultima_linha_significativa = False
         producoes = []
         qtd_de_caracteres_finais_ignorados = -2
 
@@ -202,54 +210,35 @@ while(continuar_execucao):
             # se for a primeira ou a segunda linha, pula pois não é para ser uma produção
             if linhanum == 1 or linhanum == 2:
                 continue
-            # se a linha possuir apenas o caractere '}', significa que devemos ter chegado ao fim das produções
-            if linha[0] == '}' and len(linha) == 1:
+            # se a última linha possuir apenas o caractere '}', significa que devemos ter chegado ao fim das produções
+            if linha[0] == '}' and ultima_linha_significativa and len(linha) <= 2:
                 sintaxe_de_fim_correta = True
                 continue
-            # se o arquivo continua depois de chegarmos ao fim das produções, então o arquivo não está no formato especificado
-            if sintaxe_de_fim_correta:
+            # se o arquivo possui linhas não vazias depois de chegarmos ao fim das produções, então o arquivo não está no formato especificado
+            if linha.strip() and sintaxe_de_fim_correta:
                 print("Erro: arquivo da GLUD possui conteúdo após caractere terminador das produções ('}')")
-                continuar_execucao = False
-                break
-            # verifica se alguma linha é vazia, e dá um erro se for
-            if not linha.strip():
-                print("Erro: linha de produções vazia")
                 continuar_execucao = False
                 break
             # verifica se chegamos na última produção (não possui vírgula a separando de outras produções), para de ignorar os últimos 2 caracteres (,\n) e passa a igorar somente o último (\n)
             if linha[-2] != ',':
                 qtd_de_caracteres_finais_ignorados = -1
-            # descontando o caractere \n e a vírgula, o total de caracteres em uma produção deve ser 5 (V -> ), 6 (V -> t) ou 7 (V -> tV)
-            if len(linha[:qtd_de_caracteres_finais_ignorados]) > 7 or len(linha[:qtd_de_caracteres_finais_ignorados]) < 5:
-                print("Erro: tamanho de produção incorreto")
+                ultima_linha_significativa = True
+            # Verifica se a linha é da forma sintaticamente correta
+            if not ultima_linha_significativa:
+                try:
+                    re.fullmatch(".+ -> .*", linha)
+                except re.error:
+                    print("Erro: Alguma produção dada não é da forma correta")
+            
+            if VerificaSeLadoEsquerdoEInvalido(linha[0:linha.find(" -> ")],variaveis):
+                print("Erro: Lado esquerdo de alguma produção é inválido")
                 continuar_execucao = False
                 break
-            # verifica se há o símbolo '->' exatamente no meio da produção
-            if linha[:-1].find("->") != 2:
-                print("Erro: símbolo representador da transição na produção inexistente ou no local incorreto (deve ser do tipo \"V -> tV\", \"V -> t\" ou \"V -> \")")
+
+            if VerificaSeLadoDireitoEInvalido(linha[linha.find(" -> ")+4:], terminal_max_len, variavel_max_len, qtd_de_caracteres_finais_ignorados, terminais, variaveis):
                 continuar_execucao = False
                 break
-            # verifica se há espaços separando 'V' '->' e o símbolo da esquerda, se existir
-            if linha[1] != " " or linha[4] != " ":
-                print("Erro: deve haver espaço separando o símbolo da direita da produção do símbolo -> e deve haver um espaço separando o símbolo -> do símbolo da esquerda da produção")
-                continuar_execucao = False
-                break
-            # verifica se os símbolos envolvidos na produção pertencem aos conjuntos definidos de variáveis e terminais
-            if len(linha[:qtd_de_caracteres_finais_ignorados]) == 7:
-                if linha[:qtd_de_caracteres_finais_ignorados][0] not in variaveis or linha[:qtd_de_caracteres_finais_ignorados][5] not in terminais or linha[:qtd_de_caracteres_finais_ignorados][6] not in variaveis:
-                    print(f"Erro: algum símbolo de produção da linha {linhanum} não pertence ao conjunto de variáveis ou de terminais (deve ser do tipo \"V -> tV\")")
-                    continuar_execucao = False
-                    break
-            if len(linha[:qtd_de_caracteres_finais_ignorados]) == 6:
-                if linha[:qtd_de_caracteres_finais_ignorados][0] not in variaveis or linha[:qtd_de_caracteres_finais_ignorados][5] not in terminais:
-                    print(f"Erro: algum símbolo de produção da linha {linhanum} não pertence ao conjunto de variáveis ou de terminais (deve ser do tipo \"V -> t\")")
-                    continuar_execucao = False
-                    break
-            if len(linha[:qtd_de_caracteres_finais_ignorados]) == 5:
-                if linha[:qtd_de_caracteres_finais_ignorados][0] not in variaveis or linha[:qtd_de_caracteres_finais_ignorados][4] != " ":
-                    print(f"Erro: o primeiro símbolo da linha {linhanum} não pertence ao conjunto de variáveis ou o último símbolo da linha {linhanum} não é a palavra vazia (espaço) (deve ser do tipo \"V -> \")")
-                    continuar_execucao = False
-                    break
+
             producoes.append(linha[:qtd_de_caracteres_finais_ignorados])
 
         if not sintaxe_de_fim_correta:
