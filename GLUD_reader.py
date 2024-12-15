@@ -206,14 +206,18 @@ while(continuar_execucao):
 
         #tratamento das produções
         for linhanum, linha in enumerate(arq, 1):
-            print(linha, linhanum, len(linha))
             # se for a primeira ou a segunda linha, pula pois não é para ser uma produção
             if linhanum == 1 or linhanum == 2:
                 continue
             # se a última linha possuir apenas o caractere '}', significa que devemos ter chegado ao fim das produções
-            if linha[0] == '}' and ultima_linha_significativa and len(linha) <= 2:
-                sintaxe_de_fim_correta = True
-                continue
+            if linha[0] == '}' and ultima_linha_significativa:
+                if len(linha) <= 2:
+                    sintaxe_de_fim_correta = True
+                    continue
+                else:
+                    print("Erro: forma incorreta do fim das produções")
+                    continuar_execucao = False
+                    break
             # se o arquivo possui linhas não vazias depois de chegarmos ao fim das produções, então o arquivo não está no formato especificado
             if linha.strip() and sintaxe_de_fim_correta:
                 print("Erro: arquivo da GLUD possui conteúdo após caractere terminador das produções ('}')")
@@ -223,18 +227,20 @@ while(continuar_execucao):
             if linha[-2] != ',':
                 qtd_de_caracteres_finais_ignorados = -1
                 ultima_linha_significativa = True
+
             # Verifica se a linha é da forma sintaticamente correta
-            if not ultima_linha_significativa:
-                try:
-                    re.fullmatch(".+ -> .*", linha)
-                except re.error:
-                    print("Erro: Alguma produção dada não é da forma correta")
-            
+            if re.fullmatch(".+ -> .*\n?", linha) is None:
+                print("Erro: Alguma produção dada não é da forma correta")
+                continuar_execucao = False
+                break
+
+            # verifica se o lado esquerdo da produção é uma variável
             if VerificaSeLadoEsquerdoEInvalido(linha[0:linha.find(" -> ")],variaveis):
                 print("Erro: Lado esquerdo de alguma produção é inválido")
                 continuar_execucao = False
                 break
 
+            # verifica se o lado esquerdo da produção é um vazio, um terminal, ou um terminal e uma variável
             if VerificaSeLadoDireitoEInvalido(linha[linha.find(" -> ")+4:], terminal_max_len, variavel_max_len, qtd_de_caracteres_finais_ignorados, terminais, variaveis):
                 continuar_execucao = False
                 break
