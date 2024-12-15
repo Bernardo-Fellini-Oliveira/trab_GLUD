@@ -210,8 +210,9 @@ while(continuar_execucao):
             if linhanum == 1 or linhanum == 2:
                 continue
             # se a última linha possuir apenas o caractere '}', significa que devemos ter chegado ao fim das produções
-            if linha[0] == '}' and ultima_linha_significativa:
+            if ultima_linha_significativa and linha[0] == '}':
                 if len(linha) <= 2:
+                    ultima_linha_significativa = False
                     sintaxe_de_fim_correta = True
                     continue
                 else:
@@ -219,12 +220,16 @@ while(continuar_execucao):
                     continuar_execucao = False
                     break
             # se o arquivo possui linhas não vazias depois de chegarmos ao fim das produções, então o arquivo não está no formato especificado
-            if linha.strip() and sintaxe_de_fim_correta:
-                print("Erro: arquivo da GLUD possui conteúdo após caractere terminador das produções ('}')")
-                continuar_execucao = False
-                break
+            if sintaxe_de_fim_correta:
+                if linha.strip():
+                    print("Erro: arquivo da GLUD possui conteúdo após caractere terminador das produções ('}')")
+                    continuar_execucao = False
+                    break
+                else:
+                    continue
+
             # verifica se chegamos na última produção (não possui vírgula a separando de outras produções), para de ignorar os últimos 2 caracteres (,\n) e passa a igorar somente o último (\n)
-            if linha[-2] != ',':
+            if  linha[-2] != ',':
                 qtd_de_caracteres_finais_ignorados = -1
                 ultima_linha_significativa = True
 
