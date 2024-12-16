@@ -14,7 +14,7 @@ def afRecognizer(afD: tuple, word: str):
         except Exception: #caso não haja movimento para o símbolo atual (qualquer que seja), rejeita a entrada retornando False
             return aceita
             
-    if estado ==  finalStatev: #se ao final da fita, o estado final foi encontrado, aceita a palavra, caso contrário rejeita
+    if estado in  finalStatev: #se ao final da fita, o estado final foi encontrado, aceita a palavra, caso contrário rejeita
         aceita = True
     else: 
         aceita = False
