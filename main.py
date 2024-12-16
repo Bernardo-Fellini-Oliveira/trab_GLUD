@@ -58,3 +58,5 @@ if __name__ == "__main__":
     print(f"\nW = {{{','.join(words)}}}")
     print("\nW ∩ ACEITA(M):", *aceita, sep="\n")
     print("\nW ∩ REJEITA(M):", *rejeita, sep="\n")
+
+    input("\nPress Enter to exit...")
