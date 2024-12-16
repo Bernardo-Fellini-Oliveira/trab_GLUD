@@ -29,6 +29,8 @@ def VerificaSeLadoDireitoEInvalido(lado_direito : str, tamanho_maximo_de_termina
         lado_invalido = False
     elif lado_direito.strip() in terminais:
         lado_invalido = False
+    elif lado_direito.strip() in variaveis:
+        lado_invalido = False
     else:
         for i in range(tamanho_maximo_de_terminal, -1, -1):
             if lado_direito[0:i] in terminais and lado_direito[i:].strip() in variaveis:
